@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createConfiguredModelClient } from "../../../../src/agents/model-runtime.mjs";
 import { runAuthorityViolationAttack, runEvidenceTamperAttack } from "../../../../src/attacks/attack-lab.mjs";
 import { createIdentityResolverFromEnv } from "../../../../src/server/identity-runtime.mjs";
+import { loadSigningIdentitiesFromEnv } from "../../../../src/server/signing-runtime.mjs";
 
 export const runtime = "nodejs";
 
@@ -11,9 +12,11 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const attack = body.attack ?? "authority-violation";
     const modelClient = createConfiguredModelClient({ allowFallback: true });
+    const signingIdentities = loadSigningIdentitiesFromEnv();
     const identityResolver = createIdentityResolverFromEnv();
     const options = {
       modelClient,
+      ...(signingIdentities ? { signingIdentities } : {}),
       ...(identityResolver ? { identityResolver } : {}),
     };
 
