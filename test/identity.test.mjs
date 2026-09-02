@@ -64,6 +64,22 @@ test("name.com publication plan creates organization root, manifest host, and pe
   assert.deepEqual(plan.records.map((record) => record.type), ["TXT", "CNAME", "TXT", "TXT", "TXT", "TXT"]);
 });
 
+test("sandbox publication can point provider-backed TXT at a separately reachable HTTPS manifest", () => {
+  const { manifest } = demoManifest("proofroot.test");
+  const publicManifestUrl = "https://proofroot-demo.vercel.app/.well-known/proofroot.json";
+  const plan = buildIdentityDnsRecords({
+    domainName: "proofroot.test",
+    manifestTargetHost: "proofroot-demo.vercel.app",
+    manifestPublicUrl: publicManifestUrl,
+    rootFingerprint: manifest.rootKey.fingerprint,
+    agents: manifest.agents,
+  });
+  assert.equal(plan.manifestUrl, publicManifestUrl);
+  assert.match(plan.records[0].answer, new RegExp(`manifest=${publicManifestUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  assert.equal(plan.records[1].type, "CNAME");
+  assert.equal(plan.records[1].host, "proof");
+});
+
 test("publication and reconciliation preserve provider record IDs without local fake success", async () => {
   const { manifest } = demoManifest();
   const plan = buildIdentityDnsRecords({
@@ -94,9 +110,11 @@ test("publication and reconciliation preserve provider record IDs without local 
 
 test("sandbox identity resolver verifies provider-backed TXT, signed manifest, and fingerprint", async () => {
   const { manifest } = demoManifest();
+  const publicManifestUrl = "https://proofroot-demo.vercel.app/.well-known/proofroot.json";
   const plan = buildIdentityDnsRecords({
     domainName: "proofroot.test",
-    manifestTargetHost: "cname.vercel-dns.com",
+    manifestTargetHost: "proofroot-demo.vercel.app",
+    manifestPublicUrl: publicManifestUrl,
     rootFingerprint: manifest.rootKey.fingerprint,
     agents: manifest.agents,
   });
@@ -109,7 +127,7 @@ test("sandbox identity resolver verifies provider-backed TXT, signed manifest, a
       },
     },
     fetchImpl: async (url) => {
-      assert.equal(url, plan.manifestUrl);
+      assert.equal(url, publicManifestUrl);
       return new Response(JSON.stringify(manifest), { status: 200, headers: { "content-type": "application/json" } });
     },
   });
