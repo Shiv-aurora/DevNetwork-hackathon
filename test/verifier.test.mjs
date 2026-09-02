@@ -102,5 +102,5 @@ test("identity resolver mismatch fails identity independently of otherwise valid
   });
   assert.equal(report.overallStatus, "failed");
   assert.equal(report.checks.identityResolution.status, "invalid");
-  assert.equal(report.checks.signatureValidity.status, "invalid");
+  assert.equal(report.checks.signatureValidity.status, "valid");
 });
