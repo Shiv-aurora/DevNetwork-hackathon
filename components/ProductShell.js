@@ -12,6 +12,10 @@ const NAV = [
 ];
 
 export default function ProductShell({ children }) {
+  const namecomEnvironment = process.env.NAMECOM_ENV ?? "sandbox";
+  const namecomConfigured = Boolean(process.env.NAMECOM_USERNAME && process.env.NAMECOM_TOKEN);
+  const groqConfigured = Boolean(process.env.GROQ_API_KEY && process.env.GROQ_MODEL);
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -23,8 +27,9 @@ export default function ProductShell({ children }) {
           {NAV.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}
         </nav>
         <div className="sidebar-foot">
-          <span className="environment-dot" /> Name.com sandbox
-          <small>Provider verification pending</small>
+          <span className="environment-dot" /> name.com {namecomEnvironment}
+          <small>{namecomConfigured ? "Provider credentials configured" : "Provider secrets pending"}</small>
+          <small>{groqConfigured ? "Groq model configured" : "Deterministic AI fallback active"}</small>
           <ResetDemoButton />
         </div>
       </aside>
