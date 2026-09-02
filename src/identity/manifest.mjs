@@ -24,6 +24,24 @@ function publicAgentRecord(record) {
   });
 }
 
+function normalizedPublicKeyRecord(record) {
+  const ownerId = record?.ownerId ?? record?.id;
+  if (!ownerId || !record?.keyId || !record?.publicKeySpki || !record?.fingerprint) {
+    throw new Error("Invalid public identity key record in ProofRoot manifest.");
+  }
+  return Object.freeze({
+    keyId: record.keyId,
+    ownerId,
+    algorithm: record.algorithm,
+    status: record.status,
+    validFrom: record.validFrom,
+    validUntil: record.validUntil,
+    ...(record.retiredAt ? { retiredAt: record.retiredAt } : {}),
+    publicKeySpki: record.publicKeySpki,
+    fingerprint: record.fingerprint,
+  });
+}
+
 export function createIdentityManifest({
   organization,
   domain,
@@ -99,5 +117,8 @@ export function verifyIdentityManifest(manifest, expectedRootKey = manifest?.roo
 
 export function manifestPublicKeys(manifest) {
   if (!manifest?.rootKey || !Array.isArray(manifest?.agents)) throw new Error("Invalid ProofRoot identity manifest.");
-  return Object.freeze([manifest.rootKey, ...manifest.agents]);
+  return Object.freeze([
+    normalizedPublicKeyRecord(manifest.rootKey),
+    ...manifest.agents.map(normalizedPublicKeyRecord),
+  ]);
 }
