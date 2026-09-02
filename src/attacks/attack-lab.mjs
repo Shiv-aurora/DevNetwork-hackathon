@@ -5,6 +5,7 @@ import { verifyEvidenceBundle } from "../verifier/verify-bundle.mjs";
 
 export async function runAuthorityViolationAttack({
   modelClient = createDeterministicModelClient(),
+  signingIdentities,
   identityResolver,
   idFactory,
 } = {}) {
@@ -12,6 +13,7 @@ export async function runAuthorityViolationAttack({
   const workflow = await runGoldenWorkflow({
     scenario: WORKFLOW_SCENARIOS.AUTHORITY_ATTACK,
     modelClient,
+    ...(signingIdentities ? { signingIdentities } : {}),
     idFactory,
     protectedTool: async () => {
       protectedToolCalls += 1;
@@ -38,12 +40,14 @@ export async function runAuthorityViolationAttack({
 
 export async function runEvidenceTamperAttack({
   modelClient = createDeterministicModelClient(),
+  signingIdentities,
   identityResolver,
   idFactory,
 } = {}) {
   const workflow = await runGoldenWorkflow({
     scenario: WORKFLOW_SCENARIOS.VALID,
     modelClient,
+    ...(signingIdentities ? { signingIdentities } : {}),
     idFactory,
   });
   const tamperedBundle = structuredClone(workflow.evidenceBundle);
