@@ -1,40 +1,55 @@
 # Status
 
-Current phase: Credential-independent Phases 3–4 foundation
-Current objective: Keep advancing the identity/evidence core while Phase 0 and Phase 2 external name.com work remains blocked by unavailable credentials.
+Current phase: Pre-deployment handoff — live provider, secret, and deployment integration
+Current objective: Complete the real name.com/Groq/Vercel environment, validate the deployed P0 judging path, and produce final submission media without changing the locked ProofRoot product.
 
 Completed:
-- Confirmed `Shiv-aurora/DevNetwork-hackathon` is a fresh hackathon project and persisted `docs/VISION.md` and `docs/IMPLEMENTATION.md`.
-- Locked the golden contract: case `#194`, valid refund `$85`, delegated cap `$100`, authority attack `$850`, tamper value `$850`.
-- Selected Vercel as deployment target and an explicitly labeled deterministic refund simulator as the P0 protected-tool path.
-- Selected **Name.com Sandbox / Provider-Backed Verification** as the truthful default identity mode until production DNS is independently proven.
-- Hardened the name.com CORE v1 checker for authenticated connectivity plus read-only domain visibility without credential leakage.
-- Configured Groq as the primary deployed AI provider, with local models only as an optional development fallback.
-- Established a Next.js 16.3.3 / React 19.2.8 product shell with all seven Phase 1 surfaces: domain onboarding, organization identity, agent registry, live run, chain explorer, independent verification, and attack lab.
-- Established shared `proofroot.state.v1` domain/evidence state, lifecycle/status semantics, resettable valid/authority/tamper fixtures, and one-click reset.
-- Added Ed25519 signing identities with public-key records, fingerprints, validity metadata, and no private-key serialization.
-- Added deterministic canonical JSON and SHA-256 content digests.
-- Added versioned signed Root Mandate, Delegation Receipt, Action Request Receipt, Gateway Decision Receipt, Execution Receipt, and Run Seal objects.
-- Bound every non-root receipt to causal parent digests and bound the run seal to the included receipt set.
-- Added separate signed gateway blocked-decision evidence without creating an execution receipt for blocked actions.
-- Added redacted/digested sensitive evidence helpers and explicit rejection of raw model chain-of-thought fields.
-- Added canonical exportable `proofroot.bundle.v1` evidence bundles.
-- Kept unimplemented external/security facts explicit: no fixture is presented as name.com-authenticated, publicly DNS-resolved, or independently verified from a published domain identity.
+- Persisted the final product vision, implementation plan, and phase-by-phase implementation matrix.
+- Built the Next.js/React product with all P0 surfaces: Domain, Organization, Agents, Live Run, Chain Explorer, Verify, and Attack Lab.
+- Implemented the full secret-safe name.com CORE v1 client and server routes for authentication/status, search, availability, sandbox provisioning, domain listing, and DNS create/list/update/delete.
+- Implemented signed organization/agent identity manifests, name.com TXT/CNAME/per-agent publication plans, provider-backed sandbox resolution, and production public-DNS resolution.
+- Implemented persistent deployment signing identities: private keys load only from deployment secrets and are cryptographically checked against the signed public manifest before use.
+- Added ignored local identity provisioning and name.com publication/reconciliation scripts.
+- Fixed the sandbox manifest path so provider-backed name.com TXT can point to a genuinely reachable public Vercel HTTPS manifest without claiming sandbox DNS resolves publicly.
+- Implemented canonical JSON, SHA-256 digests, Ed25519 signatures, Root Mandate, Delegation, Action Request, Gateway Decision, Execution Receipt, Run Seal, and exportable evidence bundles.
+- Implemented the Proof Gateway with signature/key checks, causal lineage, expiry, authority attenuation, action/amount enforcement, exact parameter binding, replay prevention, allowed-only tool execution, and signed success/failure evidence.
+- Implemented server-runtime replay persistence and made the demo reset clear that replay state.
+- Implemented Groq-first structured model routing with explicit deterministic fallback and a real Groq connectivity check.
+- Implemented the complete Organization → Triage → Billing → Refund → Proof Gateway → Protected Tool golden workflow.
+- Implemented independent verification with separate identity, signature, delegation, constraint, Gateway, and bundle-integrity results plus first-failure/downstream localization.
+- Implemented both mandatory attacks as real code paths: `$850` authority violation blocked before tool execution, and `$85 → $850` evidence tampering detected by re-verification.
+- Replaced foundation placeholders with executable judge-facing UI for the golden run, causal graph, evidence explorer, verifier, mandatory attacks, and name.com lifecycle.
+- Added responsive product styling, safe health/runtime reporting, deployed smoke-test automation, README, architecture, deployment, demo, and Devpost documentation.
+- Added `docs/IMPLEMENTATION_STATUS.md` as the detailed source of truth for what is implemented, CI validated, live validated, and still pending by phase.
 
 Last verified:
-- Codex commit `059ccd9` hardened provider checks but could not perform real name.com/Groq calls because credentials were absent.
-- Phase 1 code/build validation passed on GitHub Actions run `33685472366` for commit `2ac453e`.
-- Signed evidence contract commit `d41e882` passed GitHub Actions run `33685774743`: dependency install, complete Node test suite, and production `next build` all succeeded.
-- Evidence tests verify stable canonical digests, valid signer verification, wrong-key rejection, tamper-induced digest/signature failure, causal parent links, signed blocked decisions with no execution receipt, sensitive-data redaction, private-reasoning rejection, and canonical evidence-bundle export.
-- All seven product routes production-build successfully. A deployed/browser runtime has not yet been claimed or validated.
+- Secret-free repository state through commit `494ec766de7a13b954acd45c890c692858d4e8b9` passed GitHub Actions run `33689449434`.
+- That run completed dependency installation, the complete Node test suite, and production `next build` successfully.
+- Persistent signing keys are tested to match the public manifest and fail closed on mismatch.
+- Signed identity resolution is tested for sandbox provider-backed mode and production public-DNS mode.
+- Stale identity manifests are rejected.
+- Sandbox publication is tested with a separately reachable HTTPS manifest URL rather than non-resolving sandbox DNS.
+- Provider tests cover auth/error redaction, rate limiting, environment separation, malformed identity state, and secret-template hygiene.
+- No live name.com/Groq/Vercel claim is being made from mocked/unit-test evidence.
 
-Blockers:
-- `NAMECOM_USERNAME` and `NAMECOM_TOKEN` are not available to this environment. Real name.com authentication, account/domain visibility, DNS lifecycle, and provider-backed identity publication remain externally unverified; Phase 0 is therefore not closed and Phase 2 cannot be completed truthfully.
-- A usable production name.com-managed domain/public DNS path has not been established; no production DNS or DNSSEC claim should be made.
-- `GROQ_API_KEY` and `GROQ_MODEL` are not available here, so real Groq model connectivity remains externally unverified.
-- No connected Vercel team/project is exposed through the current Vercel integration, so deployed/browser validation has not yet been performed.
+Blockers / external work:
+- Real `NAMECOM_USERNAME` and `NAMECOM_TOKEN` have not been supplied to this environment, so live name.com authentication/account/domain/DNS lifecycle is not yet validated.
+- A production name.com-managed domain/public-DNS path has not been established. Default to truthful sandbox provider-backed verification unless an existing production domain is actually available.
+- Real `GROQ_API_KEY` and `GROQ_MODEL` have not been supplied here, so the deployed model-driven path is not yet live validated.
+- The connected Vercel integration exposes no team/project to this ChatGPT environment, so deployment, Vercel secrets, runtime logs, and browser validation cannot be completed here.
+- The repository does not yet contain a generated `package-lock.json`; an environment with npm filesystem access should generate and commit it, then switch CI to `npm ci` for reproducible final installs.
+- Final screenshots, clean-browser validation, and the 2–4 minute demo video require the deployed runtime.
 
-Next:
-- When name.com secrets are available, run `NAMECOM_ENV=sandbox npm run check:namecom`, record the real provider result, and implement/validate the Phase 2 domain lifecycle against that environment.
-- When Groq secrets are available, verify one deployed-model call and close the model-access Phase 0 item.
-- While external credentials remain unavailable, the next safe milestone is to build the deterministic Proof Gateway verification/enforcement layer on top of the now-validated receipt primitives, without claiming domain-resolved identity until name.com is real.
+Exact next step:
+1. Hand the current `main` branch to Codex and have it follow `docs/DEPLOYMENT.md` rather than redesign the application.
+2. Generate/commit `package-lock.json`, switch CI install to `npm ci`, and confirm tests/build still pass.
+3. Supply name.com and Groq credentials only through Codex/local/Vercel secret environments; never commit them.
+4. Run `npm run check:namecom` and `npm run check:groq` against the real providers.
+5. Select/provision the sandbox domain (or deliberately select an existing production domain), set `PROOFROOT_DOMAIN`, and run `npm run provision:identity` locally.
+6. Create/link the Vercel project, set the public manifest and private signing-key JSON directly as Vercel environment values, set provider/model secrets, and deploy.
+7. Set the real manifest URL/CNAME target and run `npm run publish:identity`; confirm provider reconciliation succeeds.
+8. Run `npm run smoke:deployed` with live expectation flags and require the valid run, identity resolution, Groq path, authority block, and tamper attack all to pass.
+9. Validate the UI in a clean browser, inspect Vercel runtime logs/browser console, and confirm no secrets/private reasoning are exposed.
+10. Capture final screenshots, record the demo using `docs/DEMO.md`, update `docs/IMPLEMENTATION_STATUS.md` and this file with actual live evidence, then push only non-secret changes.
+
+Do not start Phase 12 stretch work until the P0 deployed path is stable and recorded.
