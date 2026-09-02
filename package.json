@@ -1,0 +1,14 @@
+{
+  "name": "proofroot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The flight recorder for autonomous AI agents.",
+  "scripts": {
+    "test": "node --test",
+    "check:namecom": "node scripts/check-namecom.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

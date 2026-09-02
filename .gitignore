@@ -1,0 +1,18 @@
+node_modules/
+.next/
+out/
+coverage/
+.vercel/
+*.log
+.DS_Store
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Local key material must never be committed
+*.pem
+*.key
+keys/
+secrets/
