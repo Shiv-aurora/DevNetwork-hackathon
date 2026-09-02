@@ -6,6 +6,10 @@ function requireString(value, field) {
   return value.trim();
 }
 
+function validTimestamp(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
 function unsignedManifest(manifest) {
   const { contentDigest: _digest, signature: _signature, ...unsigned } = manifest;
   return unsigned;
@@ -19,6 +23,7 @@ function publicAgentRecord(record) {
     status: record.status,
     validFrom: record.validFrom,
     validUntil: record.validUntil,
+    ...(record.retiredAt ? { retiredAt: record.retiredAt } : {}),
     publicKeySpki: record.publicKeySpki,
     fingerprint: record.fingerprint,
   });
@@ -55,6 +60,9 @@ export function createIdentityManifest({
   requireString(domain, "domain");
   requireString(generatedAt, "generatedAt");
   requireString(validUntil, "validUntil");
+  if (!validTimestamp(generatedAt) || !validTimestamp(validUntil) || Date.parse(validUntil) <= Date.parse(generatedAt)) {
+    throw new Error("Manifest generatedAt/validUntil must define a valid forward-looking interval.");
+  }
   if (!rootPublicKey?.keyId || !rootPrivateKey) throw new Error("root signing key material is required.");
   if (!Array.isArray(agentPublicKeys) || agentPublicKeys.length === 0) throw new Error("agentPublicKeys must be a non-empty array.");
 
@@ -90,6 +98,11 @@ export function verifyIdentityManifest(manifest, expectedRootKey = manifest?.roo
   if (manifest?.signature?.keyId !== expectedRootKey?.keyId) reasons.push("root-key-id-mismatch");
   if (manifest?.rootKey?.fingerprint !== expectedRootKey?.fingerprint) reasons.push("root-fingerprint-mismatch");
 
+  if (!validTimestamp(manifest?.generatedAt) || !validTimestamp(manifest?.validUntil)
+    || Date.parse(manifest.validUntil) <= Date.parse(manifest.generatedAt)) {
+    reasons.push("invalid-manifest-validity-window");
+  }
+
   let digestValid = false;
   let signatureValid = false;
   try {
@@ -102,10 +115,14 @@ export function verifyIdentityManifest(manifest, expectedRootKey = manifest?.roo
   if (!digestValid) reasons.push("manifest-digest-mismatch");
   if (!signatureValid) reasons.push("manifest-signature-invalid");
 
-  const uniqueIds = new Set((manifest?.agents ?? []).map((agent) => agent.id));
-  const uniqueKeys = new Set((manifest?.agents ?? []).map((agent) => agent.keyId));
-  if (uniqueIds.size !== (manifest?.agents ?? []).length) reasons.push("duplicate-agent-identity");
-  if (uniqueKeys.size !== (manifest?.agents ?? []).length) reasons.push("duplicate-agent-key");
+  const actors = [manifest?.rootKey, ...(manifest?.agents ?? [])].filter(Boolean);
+  const uniqueIds = new Set(actors.map((actor) => actor.id));
+  const uniqueKeys = new Set(actors.map((actor) => actor.keyId));
+  if (uniqueIds.size !== actors.length) reasons.push("duplicate-identity");
+  if (uniqueKeys.size !== actors.length) reasons.push("duplicate-key");
+  for (const actor of actors) {
+    if (actor.status === "retired" && !validTimestamp(actor.retiredAt)) reasons.push("retired-key-missing-retired-at");
+  }
 
   return Object.freeze({
     valid: reasons.length === 0,
