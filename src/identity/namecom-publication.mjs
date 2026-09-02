@@ -12,6 +12,7 @@ export function buildIdentityDnsRecords({
   manifestTargetHost,
   rootFingerprint,
   manifestHost = "proof",
+  manifestPublicUrl = null,
   agents,
 }) {
   requireString(domainName, "domainName");
@@ -19,7 +20,11 @@ export function buildIdentityDnsRecords({
   requireString(rootFingerprint, "rootFingerprint");
   if (!Array.isArray(agents) || agents.length === 0) throw new Error("agents must be a non-empty array.");
 
-  const manifestUrl = `https://${manifestHost}.${domainName}/.well-known/proofroot.json`;
+  const manifestUrl = manifestPublicUrl
+    ? requireString(manifestPublicUrl, "manifestPublicUrl")
+    : `https://${manifestHost}.${domainName}/.well-known/proofroot.json`;
+  if (!/^https:\/\//i.test(manifestUrl)) throw new Error("manifestPublicUrl must use HTTPS.");
+
   const records = [
     Object.freeze({
       purpose: "organization-root",
