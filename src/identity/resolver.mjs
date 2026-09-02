@@ -36,16 +36,27 @@ async function publicRootRecord(domainName, resolveTxtImpl) {
   return { answer, source: "public-dns" };
 }
 
+function manifestCurrentAt(manifest, nowMs) {
+  const generatedAt = Date.parse(manifest?.generatedAt);
+  const validUntil = Date.parse(manifest?.validUntil);
+  return Number.isFinite(generatedAt)
+    && Number.isFinite(validUntil)
+    && generatedAt <= nowMs
+    && nowMs <= validUntil;
+}
+
 export function createDomainIdentityResolver({
   environment,
   domainName,
   namecomClient = null,
   fetchImpl = globalThis.fetch,
   resolveTxtImpl = nodeResolveTxt,
+  now = () => Date.now(),
 } = {}) {
   if (!["sandbox", "production"].includes(environment)) throw new Error("environment must be sandbox or production.");
   if (typeof domainName !== "string" || domainName.length === 0) throw new Error("domainName is required.");
   if (typeof fetchImpl !== "function") throw new Error("fetchImpl is required.");
+  if (typeof now !== "function") throw new Error("now must be a function.");
   if (environment === "sandbox" && (!namecomClient || typeof namecomClient.listRecords !== "function")) {
     throw new Error("namecomClient is required for sandbox provider-backed identity resolution.");
   }
@@ -64,6 +75,14 @@ export function createDomainIdentityResolver({
           status: "invalid",
           source: rootRecord.source,
           detail: `Identity manifest failed cryptographic verification: ${manifestCheck.reasons.join(", ")}.`,
+          publicKeys: manifestPublicKeys(manifest),
+        };
+      }
+      if (!manifestCurrentAt(manifest, now())) {
+        return {
+          status: "invalid",
+          source: rootRecord.source,
+          detail: "Identity manifest is not valid at the current verification time.",
           publicKeys: manifestPublicKeys(manifest),
         };
       }
