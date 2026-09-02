@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./product.css";
 import ProductShell from "../components/ProductShell";
 
 export const metadata = {
