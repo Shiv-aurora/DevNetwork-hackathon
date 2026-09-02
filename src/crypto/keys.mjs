@@ -1,5 +1,6 @@
 import {
   createHash,
+  createPrivateKey,
   createPublicKey,
   generateKeyPairSync,
   sign as cryptoSign,
@@ -36,6 +37,26 @@ export function publicKeyFromRecord(record) {
     throw new Error("Unsupported or incomplete public key record.");
   }
   return createPublicKey({ key: Buffer.from(record.publicKeySpki, "base64"), type: "spki", format: "der" });
+}
+
+export function exportPrivateKeyPkcs8(privateKey) {
+  if (!privateKey) throw new Error("privateKey is required.");
+  return privateKey.export({ type: "pkcs8", format: "der" }).toString("base64");
+}
+
+export function loadSigningIdentity({ publicRecord, privateKeyPkcs8 }) {
+  if (!publicRecord?.keyId || !privateKeyPkcs8) throw new Error("publicRecord and privateKeyPkcs8 are required.");
+  const privateKey = createPrivateKey({
+    key: Buffer.from(privateKeyPkcs8, "base64"),
+    type: "pkcs8",
+    format: "der",
+  });
+  const derivedPublic = createPublicKey(privateKey).export({ type: "spki", format: "der" });
+  if (derivedPublic.toString("base64") !== publicRecord.publicKeySpki
+    || fingerprintPublicDer(derivedPublic) !== publicRecord.fingerprint) {
+    throw new Error(`Private key does not match public record '${publicRecord.keyId}'.`);
+  }
+  return Object.freeze({ publicRecord: Object.freeze({ ...publicRecord }), privateKey });
 }
 
 export function signCanonicalBytes(privateKey, canonicalBytes) {
