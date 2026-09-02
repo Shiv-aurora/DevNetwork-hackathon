@@ -7,11 +7,16 @@ import { buildIdentityDnsRecords, reconcileIdentityDnsRecords } from "../src/ide
 const environment = process.env.NAMECOM_ENV ?? "sandbox";
 const domainName = process.env.PROOFROOT_DOMAIN;
 const manifestTargetHost = process.env.PROOFROOT_MANIFEST_TARGET_HOST;
+const manifestPublicUrl = process.env.PROOFROOT_MANIFEST_PUBLIC_URL || null;
 const username = process.env.NAMECOM_USERNAME;
 const token = process.env.NAMECOM_TOKEN;
 
 if (!domainName || !manifestTargetHost || !username || !token) {
   console.error("NAMECOM_USERNAME, NAMECOM_TOKEN, PROOFROOT_DOMAIN, and PROOFROOT_MANIFEST_TARGET_HOST are required.");
+  process.exit(2);
+}
+if (environment === "sandbox" && !manifestPublicUrl) {
+  console.error("PROOFROOT_MANIFEST_PUBLIC_URL is required in sandbox because sandbox DNS records are not publicly resolvable. Use the deployed HTTPS manifest URL.");
   process.exit(2);
 }
 
@@ -34,6 +39,7 @@ const client = createNamecomClient({ environment, username, token });
 const plan = buildIdentityDnsRecords({
   domainName,
   manifestTargetHost,
+  manifestPublicUrl,
   rootFingerprint: manifest.rootKey.fingerprint,
   agents: manifest.agents,
 });
@@ -74,4 +80,7 @@ console.log(JSON.stringify({
   actions,
   reconciled: true,
   publicDnsClaim: environment === "production" ? "requires-independent-resolution-check" : false,
+  sandboxManifestBoundary: environment === "sandbox"
+    ? "TXT locator is provider-backed name.com state; manifest is fetched from the explicitly configured public HTTPS URL."
+    : null,
 }, null, 2));
