@@ -7,6 +7,7 @@ import { buildIdentityDnsRecords, publishIdentityDnsRecords, reconcileIdentityDn
 import { createDomainIdentityResolver } from "../src/identity/resolver.mjs";
 
 const T = "2026-09-02T21:00:00.000Z";
+const NOW = "2026-09-02T21:30:00.000Z";
 const EXP = "2026-09-02T22:00:00.000Z";
 
 function identity(ownerId) {
@@ -130,12 +131,35 @@ test("sandbox identity resolver verifies provider-backed TXT, signed manifest, a
       assert.equal(url, publicManifestUrl);
       return new Response(JSON.stringify(manifest), { status: 200, headers: { "content-type": "application/json" } });
     },
+    now: () => Date.parse(NOW),
   });
   const resolved = await resolver();
   assert.equal(resolved.status, "verified");
   assert.equal(resolved.source, "name.com-sandbox-provider-backed");
   assert.deepEqual(resolved.publicKeys.map((key) => key.keyId), manifestPublicKeys(manifest).map((key) => key.keyId));
   assert.match(resolved.limitation, /not publicly resolvable/i);
+});
+
+test("identity resolver rejects an otherwise valid but expired signed manifest", async () => {
+  const { manifest } = demoManifest();
+  const publicManifestUrl = "https://proofroot-demo.vercel.app/.well-known/proofroot.json";
+  const plan = buildIdentityDnsRecords({
+    domainName: "proofroot.test",
+    manifestTargetHost: "proofroot-demo.vercel.app",
+    manifestPublicUrl: publicManifestUrl,
+    rootFingerprint: manifest.rootKey.fingerprint,
+    agents: manifest.agents,
+  });
+  const resolver = createDomainIdentityResolver({
+    environment: "sandbox",
+    domainName: "proofroot.test",
+    namecomClient: { async listRecords() { return { records: [{ id: 1, ...plan.records[0] }] }; } },
+    fetchImpl: async () => new Response(JSON.stringify(manifest), { status: 200 }),
+    now: () => Date.parse("2026-09-02T22:30:00.000Z"),
+  });
+  const resolved = await resolver();
+  assert.equal(resolved.status, "invalid");
+  assert.match(resolved.detail, /not valid at the current verification time/i);
 });
 
 test("production identity resolver uses public DNS rather than name.com provider lookup", async () => {
@@ -155,6 +179,7 @@ test("production identity resolver uses public DNS rather than name.com provider
       return [[plan.records[0].answer]];
     },
     fetchImpl: async () => new Response(JSON.stringify(manifest), { status: 200 }),
+    now: () => Date.parse(NOW),
   });
   const resolved = await resolver();
   assert.equal(resolvedName, "_proofroot.proofroot.example");
