@@ -202,7 +202,7 @@ ProofRoot does **not** claim:
 
 ## Local setup
 
-Requirements: Node.js 22 or newer.
+Requirements: Node.js 22.x.
 
 ```bash
 npm install
