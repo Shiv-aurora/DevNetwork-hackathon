@@ -12,7 +12,8 @@
     "check:namecom": "node scripts/check-namecom.mjs",
     "check:groq": "node scripts/check-groq.mjs",
     "provision:identity": "node scripts/provision-signing-material.mjs",
-    "publish:identity": "node scripts/publish-identity.mjs"
+    "publish:identity": "node scripts/publish-identity.mjs",
+    "smoke:deployed": "node scripts/smoke-deployed.mjs"
   },
   "dependencies": {
     "next": "16.3.3",
