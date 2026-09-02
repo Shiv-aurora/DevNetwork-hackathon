@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createConfiguredModelClient } from "../../../../src/agents/model-runtime.mjs";
 import { runGoldenWorkflow, WORKFLOW_SCENARIOS } from "../../../../src/agents/golden-workflow.mjs";
 import { createIdentityResolverFromEnv } from "../../../../src/server/identity-runtime.mjs";
+import { loadSigningIdentitiesFromEnv } from "../../../../src/server/signing-runtime.mjs";
 import { verifyEvidenceBundle } from "../../../../src/verifier/verify-bundle.mjs";
 
 export const runtime = "nodejs";
@@ -12,7 +13,12 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const scenario = body.scenario ?? WORKFLOW_SCENARIOS.VALID;
     const modelClient = createConfiguredModelClient({ allowFallback: true });
-    const workflow = await runGoldenWorkflow({ scenario, modelClient });
+    const signingIdentities = loadSigningIdentitiesFromEnv();
+    const workflow = await runGoldenWorkflow({
+      scenario,
+      modelClient,
+      ...(signingIdentities ? { signingIdentities } : {}),
+    });
     const identityResolver = createIdentityResolverFromEnv();
     const verification = await verifyEvidenceBundle(workflow.evidenceBundle, {
       ...(identityResolver ? { identityResolver } : {}),
@@ -25,6 +31,7 @@ export async function POST(request) {
         modelProvider: workflow.routingDecision.provider,
         model: workflow.routingDecision.model,
         modelDriven: workflow.routingDecision.modelDriven,
+        persistentSigningIdentity: workflow.identity.persistent,
         identityResolutionConfigured: Boolean(identityResolver),
       },
     });
