@@ -10,6 +10,7 @@ export default function DomainConsole() {
   const [status, setStatus] = useState(null);
   const [keyword, setKeyword] = useState("proofroot");
   const [domainName, setDomainName] = useState("");
+  const [recordId, setRecordId] = useState("");
   const [record, setRecord] = useState({ type: "TXT", host: "_proofroot-demo", answer: "v=proofroot-demo", ttl: 300 });
   const [output, setOutput] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -75,12 +76,36 @@ export default function DomainConsole() {
   }
 
   async function createRecord() {
-    await request("/api/namecom/records", {
+    const body = await request("/api/namecom/records", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ domainName, record }),
     });
+    const createdId = body?.result?.id;
+    if (createdId) setRecordId(String(createdId));
   }
+
+  async function updateRecord() {
+    await request("/api/namecom/records", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domainName, id: Number(recordId), record }),
+    });
+  }
+
+  async function deleteRecord() {
+    if (!window.confirm(`Delete name.com record ${recordId} from ${domainName}?`)) return;
+    const deleted = await request("/api/namecom/records", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domainName, id: Number(recordId) }),
+    });
+    if (deleted !== null) return;
+    setRecordId("");
+  }
+
+  const recordActionDisabled = busy || !status?.configured || !domainName;
+  const existingRecordActionDisabled = recordActionDisabled || !/^\d+$/.test(recordId) || Number(recordId) <= 0;
 
   return (
     <div className="domain-console">
@@ -121,17 +146,20 @@ export default function DomainConsole() {
 
       <section className="panel dns-workbench">
         <p className="eyebrow">DNS lifecycle</p>
-        <h3>Create and inspect real provider records</h3>
+        <h3>Create, list, update, and delete provider records</h3>
         <div className="record-grid">
           <label className="field-label">Type<input value={record.type} onChange={(event) => setRecord({ ...record, type: event.target.value.toUpperCase() })} /></label>
           <label className="field-label">Host<input value={record.host} onChange={(event) => setRecord({ ...record, host: event.target.value })} /></label>
           <label className="field-label record-answer">Answer<input value={record.answer} onChange={(event) => setRecord({ ...record, answer: event.target.value })} /></label>
         </div>
+        <label className="field-label record-id-field">Provider record ID<input inputMode="numeric" value={recordId} onChange={(event) => setRecordId(event.target.value)} placeholder="Filled automatically after create, or copy from list output" /></label>
         <div className="button-row">
-          <button className="action-button" disabled={busy || !status?.configured || !domainName} onClick={createRecord}>Create record</button>
-          <button className="action-button secondary-action" disabled={busy || !status?.configured || !domainName} onClick={listRecords}>List records</button>
+          <button className="action-button" disabled={recordActionDisabled} onClick={createRecord}>Create record</button>
+          <button className="action-button secondary-action" disabled={recordActionDisabled} onClick={listRecords}>List records</button>
+          <button className="action-button secondary-action" disabled={existingRecordActionDisabled} onClick={updateRecord}>Update record</button>
+          <button className="action-button danger-action" disabled={existingRecordActionDisabled} onClick={deleteRecord}>Delete record</button>
         </div>
-        <p className="safety-note">Update/delete are implemented by the server API and used by the identity publication/reconciliation path; this console avoids destructive one-click controls during judging.</p>
+        <p className="safety-note">Update uses name.com's full-overwrite record contract. Delete requires an explicit browser confirmation and a provider record ID.</p>
       </section>
 
       {error ? <p className="error-banner">{error}</p> : null}
