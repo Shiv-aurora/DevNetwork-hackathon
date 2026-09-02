@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createConfiguredModelClient } from "../../../../src/agents/model-runtime.mjs";
 import { runGoldenWorkflow, WORKFLOW_SCENARIOS } from "../../../../src/agents/golden-workflow.mjs";
 import { createIdentityResolverFromEnv } from "../../../../src/server/identity-runtime.mjs";
+import { getServerReplayStore } from "../../../../src/server/replay-runtime.mjs";
 import { loadSigningIdentitiesFromEnv } from "../../../../src/server/signing-runtime.mjs";
 import { verifyEvidenceBundle } from "../../../../src/verifier/verify-bundle.mjs";
 
@@ -17,6 +18,7 @@ export async function POST(request) {
     const workflow = await runGoldenWorkflow({
       scenario,
       modelClient,
+      replayStore: getServerReplayStore(),
       ...(signingIdentities ? { signingIdentities } : {}),
     });
     const identityResolver = createIdentityResolverFromEnv();
@@ -33,6 +35,7 @@ export async function POST(request) {
         modelDriven: workflow.routingDecision.modelDriven,
         persistentSigningIdentity: workflow.identity.persistent,
         identityResolutionConfigured: Boolean(identityResolver),
+        replayProtection: "process-runtime",
       },
     });
   } catch (error) {
