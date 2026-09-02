@@ -13,9 +13,11 @@ Completed:
 - Added secret-safe environment configuration, a name.com connectivity checker, deterministic simulator tests, and CI.
 
 Last verified:
-- Repository state contains only project docs plus Phase 0 configuration/test scaffolding.
-- Offline tests verify the fixed demo contract and stable simulator transaction ID `sim-refund-194-usd-8500`.
+- Remote `main` contains the expected Phase 0 contract, simulator, tests, connectivity checker, and secret exclusions.
+- Offline Node tests passed `2/2`, verifying the fixed demo contract and stable simulator transaction ID `sim-refund-194-usd-8500`.
+- The name.com connectivity checker matches the official sandbox contract: `https://api.dev.name.com`, HTTP Basic Auth, `-test` username suffix, and `GET /core/v1/hello`.
 - name.com sandbox behavior is intentionally treated as provider-backed lookup, not public DNS.
+- The CI workflow exists on `main`; execution evidence still needs a completed workflow run.
 
 Blockers:
 - name.com sandbox credentials have not yet been available to run `npm run check:namecom`; Phase 0 connectivity acceptance is therefore unverified.
@@ -25,4 +27,5 @@ Blockers:
 Next:
 - Run the name.com connectivity check with sandbox credentials and record the result.
 - Confirm an AI provider/model that can be called from the deployed app.
-- If both succeed, close Phase 0 and begin Phase 1 product foundation.
+- Confirm CI completes successfully on `main`.
+- If those checks succeed, close Phase 0 and begin Phase 1 product foundation.
