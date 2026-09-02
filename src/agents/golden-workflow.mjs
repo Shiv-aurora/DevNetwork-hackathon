@@ -32,6 +32,25 @@ function signerIdentity(ownerId, keyId, validFrom, validUntil) {
   });
 }
 
+function createEphemeralIdentities({ now, validUntil, idFactory }) {
+  return Object.freeze({
+    organization: signerIdentity("org_acme_support", `key_org_${idFactory()}`, now, validUntil),
+    triage: signerIdentity("agent_triage", `key_triage_${idFactory()}`, now, validUntil),
+    billing: signerIdentity("agent_billing", `key_billing_${idFactory()}`, now, validUntil),
+    refund: signerIdentity("agent_refund", `key_refund_${idFactory()}`, now, validUntil),
+    gateway: signerIdentity("gateway_proof", `key_gateway_${idFactory()}`, now, validUntil),
+  });
+}
+
+function assertSigningIdentities(identities) {
+  for (const role of ["organization", "triage", "billing", "refund", "gateway"]) {
+    const identity = identities?.[role];
+    if (!identity?.publicRecord?.ownerId || !identity?.signer?.privateKey) {
+      throw new Error(`Signing identity '${role}' is missing or incomplete.`);
+    }
+  }
+}
+
 function createIds(idFactory) {
   return Object.freeze({
     receipt: (label) => `receipt_${label}_${idFactory()}`,
@@ -48,18 +67,21 @@ function routingDecisionValid(value) {
     && value.summary.length > 0;
 }
 
-function timelineEvent({ id, actor, label, status, evidenceDigest = null, detail = null }) {
-  return Object.freeze({ id, actor, label, status, evidenceDigest, detail });
+function timelineEvent({ id, actor, label, status, evidenceDigest = null, receiptId = null, detail = null }) {
+  return Object.freeze({ id, actor, label, status, evidenceDigest, receiptId, detail });
 }
 
 export async function runGoldenWorkflow({
   scenario = WORKFLOW_SCENARIOS.VALID,
   modelClient = createConfiguredModelClient(),
-  now = "2026-09-02T21:00:00.000Z",
-  validUntil = "2026-09-02T22:00:00.000Z",
+  signingIdentities = null,
+  now = new Date().toISOString(),
+  validUntil = null,
   idFactory = randomUUID,
   replayStore = new ReplayStore(),
   protectedTool = executeDeterministicRefund,
+  domainName = process.env.PROOFROOT_DOMAIN ?? null,
+  namecomEnvironment = process.env.NAMECOM_ENV ?? "sandbox",
 } = {}) {
   if (!Object.values(WORKFLOW_SCENARIOS).includes(scenario)) {
     throw new Error(`Unsupported workflow scenario '${scenario}'.`);
@@ -68,6 +90,7 @@ export async function runGoldenWorkflow({
     throw new Error("modelClient with decideJson() is required.");
   }
 
+  const resolvedValidUntil = validUntil ?? new Date(Date.parse(now) + 60 * 60 * 1000).toISOString();
   const ids = createIds(idFactory);
   const runId = `run_case_${DEMO_CONTRACT.supportCaseId}_${idFactory()}`;
   const requestedAmountCents = scenario === WORKFLOW_SCENARIOS.AUTHORITY_ATTACK
@@ -79,13 +102,13 @@ export async function runGoldenWorkflow({
     currency: DEMO_CONTRACT.currency,
   });
 
-  const identities = Object.freeze({
-    organization: signerIdentity("org_acme_support", `key_org_${idFactory()}`, now, validUntil),
-    triage: signerIdentity("agent_triage", `key_triage_${idFactory()}`, now, validUntil),
-    billing: signerIdentity("agent_billing", `key_billing_${idFactory()}`, now, validUntil),
-    refund: signerIdentity("agent_refund", `key_refund_${idFactory()}`, now, validUntil),
-    gateway: signerIdentity("gateway_proof", `key_gateway_${idFactory()}`, now, validUntil),
+  const identities = signingIdentities ?? createEphemeralIdentities({
+    now,
+    validUntil: resolvedValidUntil,
+    idFactory,
   });
+  assertSigningIdentities(identities);
+  const persistentIdentity = Boolean(signingIdentities);
 
   const rootMandate = createRootMandate({
     receiptId: ids.receipt("root"),
@@ -99,7 +122,7 @@ export async function runGoldenWorkflow({
       maxRefundCents: DEMO_CONTRACT.delegatedRefundLimitCents,
       permittedActions: ["billing.inspect", "refund.create"],
     },
-    validUntil,
+    validUntil: resolvedValidUntil,
     signer: identities.organization.signer,
   });
 
@@ -126,7 +149,7 @@ export async function runGoldenWorkflow({
     purpose: routingDecision.value.summary,
     permittedActions: ["billing.inspect", "refund.create"],
     constraints: { maxRefundCents: DEMO_CONTRACT.delegatedRefundLimitCents },
-    expiresAt: validUntil,
+    expiresAt: resolvedValidUntil,
     signer: identities.triage.signer,
   });
 
@@ -151,7 +174,7 @@ export async function runGoldenWorkflow({
       : "No refund authority delegated because no duplicate was confirmed.",
     permittedActions: ["refund.create"],
     constraints: { maxRefundCents: DEMO_CONTRACT.delegatedRefundLimitCents },
-    expiresAt: validUntil,
+    expiresAt: resolvedValidUntil,
     signer: identities.billing.signer,
   });
 
@@ -219,9 +242,13 @@ export async function runGoldenWorkflow({
     },
     domainEnvironment: {
       provider: "name.com",
-      environment: process.env.NAMECOM_ENV ?? "sandbox",
-      identityMode: "Name.com identity publication requires configured provider credentials.",
-      publicDnsAvailable: false,
+      environment: namecomEnvironment,
+      domainName,
+      identityMode: persistentIdentity
+        ? (namecomEnvironment === "sandbox" ? "Name.com Sandbox / Provider-Backed Verification" : "Production Public DNS")
+        : "Ephemeral development identity; domain publication not claimed",
+      publicDnsAvailable: namecomEnvironment === "sandbox" ? false : "requires-independent-resolution-check",
+      persistentIdentity,
     },
     publicKeys,
     receipts: receiptsBeforeSeal,
@@ -229,12 +256,12 @@ export async function runGoldenWorkflow({
   });
 
   const timeline = Object.freeze([
-    timelineEvent({ id: "root", actor: "Organization", label: "Signed root mandate", status: "requested", evidenceDigest: rootMandate.contentDigest }),
-    timelineEvent({ id: "triage", actor: "Triage Agent", label: `Routed case to Billing Agent (${routingDecision.provider})`, status: "allowed", evidenceDigest: triageDelegation.contentDigest, detail: routingDecision.value.summary }),
-    timelineEvent({ id: "billing", actor: "Billing Agent", label: "Confirmed controlled-fixture duplicate charge and delegated bounded refund", status: "allowed", evidenceDigest: billingDelegation.contentDigest }),
-    timelineEvent({ id: "refund", actor: "Refund Agent", label: `Signed refund request for $${(requestedAmountCents / 100).toFixed(2)}`, status: "requested", evidenceDigest: actionRequest.contentDigest }),
-    timelineEvent({ id: "gateway", actor: "Proof Gateway", label: gatewayResult.decisionReceipt.claims.decision === "allowed" ? "Validated delegation and allowed protected action" : "Blocked protected action before execution", status: gatewayResult.decisionReceipt.claims.decision, evidenceDigest: gatewayResult.decisionReceipt.contentDigest, detail: gatewayResult.reasonCodes.join(", ") }),
-    ...(gatewayResult.executionReceipt ? [timelineEvent({ id: "tool", actor: "Refund Tool", label: gatewayResult.outcome === "confirmed" ? `Confirmed transaction ${gatewayResult.toolResult?.transactionId}` : "Protected tool failed", status: gatewayResult.outcome, evidenceDigest: gatewayResult.executionReceipt.contentDigest })] : []),
+    timelineEvent({ id: "root", actor: "Organization", label: "Signed root mandate", status: "requested", receiptId: rootMandate.receiptId, evidenceDigest: rootMandate.contentDigest }),
+    timelineEvent({ id: "triage", actor: "Triage Agent", label: `Routed case to Billing Agent (${routingDecision.provider})`, status: "allowed", receiptId: triageDelegation.receiptId, evidenceDigest: triageDelegation.contentDigest, detail: routingDecision.value.summary }),
+    timelineEvent({ id: "billing", actor: "Billing Agent", label: "Confirmed controlled-fixture duplicate charge and delegated bounded refund", status: "allowed", receiptId: billingDelegation.receiptId, evidenceDigest: billingDelegation.contentDigest }),
+    timelineEvent({ id: "refund", actor: "Refund Agent", label: `Signed refund request for $${(requestedAmountCents / 100).toFixed(2)}`, status: "requested", receiptId: actionRequest.receiptId, evidenceDigest: actionRequest.contentDigest }),
+    timelineEvent({ id: "gateway", actor: "Proof Gateway", label: gatewayResult.decisionReceipt.claims.decision === "allowed" ? "Validated delegation and allowed protected action" : "Blocked protected action before execution", status: gatewayResult.decisionReceipt.claims.decision, receiptId: gatewayResult.decisionReceipt.receiptId, evidenceDigest: gatewayResult.decisionReceipt.contentDigest, detail: gatewayResult.reasonCodes.join(", ") }),
+    ...(gatewayResult.executionReceipt ? [timelineEvent({ id: "tool", actor: "Refund Tool", label: gatewayResult.outcome === "confirmed" ? `Confirmed transaction ${gatewayResult.toolResult?.transactionId}` : "Protected tool failed", status: gatewayResult.outcome, receiptId: gatewayResult.executionReceipt.receiptId, evidenceDigest: gatewayResult.executionReceipt.contentDigest })] : []),
   ]);
 
   return Object.freeze({
@@ -243,6 +270,7 @@ export async function runGoldenWorkflow({
     runId,
     requestedAmountCents,
     delegatedLimitCents: DEMO_CONTRACT.delegatedRefundLimitCents,
+    identity: Object.freeze({ persistent: persistentIdentity, domainName, environment: namecomEnvironment }),
     routingDecision: Object.freeze({
       ...routingDecision.value,
       provider: routingDecision.provider,
