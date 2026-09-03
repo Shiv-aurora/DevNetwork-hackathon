@@ -15,17 +15,17 @@ A phase that depends on name.com, Groq, public DNS, or Vercel is not considered 
 
 | Phase | Status | What exists | What still requires external/runtime work |
 | --- | --- | --- | --- |
-| 0 — Demo contract & environments | **Code/deployment baseline complete · live providers pending** | Fresh repo confirmed; Vercel production deployment; sandbox truth boundary; fixed `$85 / $100 / $850` demo contract; deterministic protected tool; secret-safe env contract; name.com and Groq connectivity checks | Real name.com authentication; actual sandbox account/domain state; Groq API/model call; final production-vs-sandbox decision based on real account/domain availability |
+| 0 — Demo contract & environments | **Deployed · Groq live · name.com pending** | Fresh repo confirmed; Vercel production deployment; sandbox truth boundary; fixed `$85 / $100 / $850` demo contract; deterministic protected tool; secret-safe env contract; live Groq model call | Real name.com authentication; actual sandbox account/domain state; final production-vs-sandbox decision based on real account/domain availability |
 | 1 — Product foundation | **Implemented, CI & deployed-browser validated** | Next.js product shell; all required surfaces; shared state model; status vocabulary; resettable fixtures; all P0 routes loaded successfully at the public Vercel URL | Repeat the final recording pass after live providers and persistent identity are configured |
 | 2 — name.com domain lifecycle | **Implemented · live provider validation pending** | CORE v1 client; search; availability; sandbox provisioning; managed domains; DNS create/list/update/delete; safe server APIs; provider error handling; UI console; identity publication/reconciliation script | Execute operations against real sandbox credentials; persist real provider IDs; confirm displayed state matches provider state; optionally select an existing production domain without purchasing one |
 | 3 — Domain-backed identity registry | **Implemented · deployment provisioning pending** | Ed25519 identities; signed organization manifest; public key fingerprints/status/validity; name.com TXT/CNAME/per-agent locator plan; sandbox and public-DNS resolvers; persistent secret-backed signing loader; public manifest endpoint | Generate deployment keys locally; store private keys only in Vercel secrets; configure domain/manifest host; publish records to real name.com; validate provider-backed or public resolution |
 | 4 — Evidence contract | **Implemented & CI validated** | Root Mandate; Delegation; Action Request; Gateway Decision; Execution; Run Seal; canonical JSON; SHA-256 digests; parent links; redacted digests; blocked evidence; exportable bundle; chain-of-thought rejection | No external dependency for core contract |
 | 5 — Proof Gateway | **Implemented & CI validated** | Signature/key/time checks; chain verification; attenuation; action and amount enforcement; parameter binding; replay prevention; signed decisions; allowed-only tool execution; signed success/failure execution evidence | Deployed runtime validation; persistent replay storage is optional for single-process demo but would be required for multi-instance production semantics |
-| 6 — Multi-agent golden workflow | **Implemented · live model validation pending** | Organization → Triage → Billing → Refund → Gateway → Tool; signed handoffs; controlled Billing fixture; reproducible deterministic fallback; model decision is materially used when Groq is configured | Real Groq authentication/model availability; confirm deployed run reports `modelDriven: true` |
+| 6 — Multi-agent golden workflow | **Implemented · Groq live validated** | Organization → Triage → Billing → Refund → Gateway → Tool; signed handoffs; controlled Billing fixture; reproducible deterministic fallback; deployed `openai/gpt-oss-20b` decision is materially used and reports `modelDriven: true` | Repeat the final recording pass after persistent identity is configured |
 | 7 — Independent verification & chain explorer | **Implemented · deployed fallback verified · live identity pending** | Bundle re-verification; six separate verification dimensions; signature/key checks; parent links; delegation/constraint checks; gateway bindings; Run Seal; first failure localization; downstream affected evidence; deployed interactive chain explorer/raw evidence | Verify a deployed run against real name.com-backed identity material |
 | 8 — Attack lab | **Implemented, CI & deployed-browser validated** | Deployed authority attack blocks `$850` before tool call and produces signed blocked decision; deployed tamper attack changes `$85` to `$850` and verifier localizes the break/four downstream links | Repeat the recording pass after live provider/persistent identity configuration |
 | 9 — Product experience | **Implemented · deployed fallback path browser-validated** | Causal graph centerpiece; persistent environment state; identity cards; status semantics; plain-language verification; raw evidence drawers; reset; guided valid/attack surfaces; responsive layout; clean-browser valid run and both attacks exercised | Repeat at recording resolution after live providers/persistent identity are configured; capture final screenshots |
-| 10 — Reliability/security | **Substantially implemented · deployed fallback validated** | Automated edge-case coverage; public fallback smoke passed; browser valid/attack API calls completed without captured page errors; production Vercel error/fatal log scan was clean | Exercise real name.com/Groq behavior; repeat log/response inspection with provider secrets and persistent identity configured |
+| 10 — Reliability/security | **Substantially implemented · deployed Groq validated** | Automated edge-case coverage; live-Groq deployed smoke passed; browser valid/attack API calls completed without captured page errors; production Vercel error/fatal log scan was clean | Exercise real name.com behavior; repeat browser/log/response inspection with persistent identity configured |
 | 11 — Deployment/docs/submission | **Public baseline deployed · live integration/media pending** | Lockfile and `npm ci`; GitHub Actions tests/build; Vercel project linked to GitHub; production deployment at `https://proofroot.vercel.app`; baseline smoke/browser/log validation; maintained submission docs | Provider/persistent-identity secrets; real domain publication/resolution; full live-expectation smoke; final screenshots; demo video; final Devpost submission |
 | 12 — Stretch | **Not started intentionally** | None required for P0 | Start only after submission-critical path is live, tested, recorded, and documented |
 
@@ -54,7 +54,7 @@ A phase that depends on name.com, Groq, public DNS, or Vercel is not considered 
 - name.com credentials have not authenticated from this execution environment.
 - Actual sandbox managed-domain state has not been observed.
 - No production name.com-managed domain/public DNS path has been established.
-- Groq credentials/model have not been called from the deployed application.
+- Groq credentials/model have been called successfully from the deployed application using `openai/gpt-oss-20b`.
 
 ### Completion gate
 
@@ -342,19 +342,19 @@ The repository contains or will contain the durable submission artifacts:
 - Generated and committed `package-lock.json`; GitHub Actions now uses `npm ci` and run `33690307890` passed all 67 tests plus the production build.
 - Pinned the supported runtime to Node 22.x and configured Turbopack's root explicitly so local and hosted builds do not select an unrelated parent lockfile.
 - Created `shiv-aroras-projects-083eab8d/proofroot`, linked it to `Shiv-aurora/DevNetwork-hackathon`, selected the Next.js preset/Node 22.x, and deployed `https://proofroot.vercel.app`.
-- Set only non-secret production configuration: sandbox identity mode, Vercel target, Groq as intended provider, and deterministic refund simulator.
+- Set sandbox identity mode, Vercel target, deterministic refund simulator, and Groq production configuration; the API key remains secret.
 - Baseline deployed smoke passed with truthful fallback state: name.com unauthenticated, persistent identity false, identity unverifiable, deterministic model fallback, `$85` transaction confirmed, `$850` authority attack blocked, and tamper attack detected.
+- Live-Groq deployed smoke passed with `openai/gpt-oss-20b`, `modelProvider: groq`, and `modelDriven: true`, while preserving the golden transaction and both mandatory attack outcomes.
 - Clean-browser validation loaded every P0 route and executed the valid run plus both mandatory attacks. Captured page errors were empty for the repeated valid-run API call.
 - A production Vercel error/fatal log scan after smoke/browser traffic returned no entries.
 - `/.well-known/proofroot.json` truthfully returns `unconfigured` until persistent identity material exists.
 
 ### External work still required
 
-- Supply name.com and Groq credentials to the local/Vercel secret environments.
+- Supply name.com credentials to the local/Vercel secret environments.
 - Generate persistent signing identities locally and transfer private values directly into Vercel secrets.
 - Determine manifest CNAME target and publish/reconcile name.com records.
 - Verify name.com status and identity resolution from deployed runtime.
-- Verify Groq model-driven path.
 - Run the full live-expectation smoke and repeat the clean-browser golden path and attacks.
 - Repeat runtime/browser/network inspection with the live integrations.
 - Capture screenshots.

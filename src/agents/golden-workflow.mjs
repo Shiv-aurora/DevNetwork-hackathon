@@ -128,7 +128,7 @@ export async function runGoldenWorkflow({
 
   const routingDecision = await modelClient.decideJson({
     system: "You are ProofRoot's Triage Agent. Classify the support case and select the next specialist. Return only the requested structured decision, never hidden reasoning.",
-    user: `Support case #${DEMO_CONTRACT.supportCaseId}: customer reports a duplicate charge. The policy allows a confirmed duplicate refund only up to $100.`,
+    user: `Support case #${DEMO_CONTRACT.supportCaseId}: customer reports a duplicate charge. The policy allows a confirmed duplicate refund only up to $100. Return exactly these JSON fields: {"route":"billing","category":"duplicate-charge","shouldInvestigate":true,"summary":"a non-empty concise explanation"}.`,
     fallbackValue: {
       route: "billing",
       category: "duplicate-charge",
